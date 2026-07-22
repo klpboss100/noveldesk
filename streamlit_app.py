@@ -24,22 +24,37 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+  /* 사이드바 배경 검정, 텍스트 흰색 */
   [data-testid="stSidebar"] { background:#111 !important; }
-  [data-testid="stSidebar"] * { color:#FAFAF8 !important; }
+  [data-testid="stSidebar"] label,
+  [data-testid="stSidebar"] p,
+  [data-testid="stSidebar"] span,
+  [data-testid="stSidebar"] div,
+  [data-testid="stSidebar"] h1,
+  [data-testid="stSidebar"] h2,
+  [data-testid="stSidebar"] h3,
+  [data-testid="stSidebar"] small,
+  [data-testid="stSidebar"] caption { color:#FAFAF8 !important; }
+  /* 사이드바 버튼은 흰 배경·검정 글씨 */
+  [data-testid="stSidebar"] button { background:#333 !important; color:#FAFAF8 !important; border:1px solid #555 !important; }
+  [data-testid="stSidebar"] button:hover { background:#555 !important; }
+  /* 사이드바 입력창 */
+  [data-testid="stSidebar"] input,
+  [data-testid="stSidebar"] textarea { background:#222 !important; color:#FAFAF8 !important; border-color:#444 !important; }
+
+  /* 메인 영역 — 기본 검정 글씨 */
   .nd-logo { font-family:Georgia,serif; font-size:1.5rem; letter-spacing:.15em;
              text-transform:uppercase; color:#111; border-bottom:2px solid #111;
              padding-bottom:10px; margin-bottom:4px; }
-  .nd-sub  { font-size:.78rem; color:#888; margin-bottom:20px; }
-  .step-hd { font-size:.7rem; font-weight:700; letter-spacing:.07em;
-             color:#C41E1E; text-transform:uppercase; margin-bottom:3px; }
+  .nd-sub  { font-size:.78rem; color:#555; margin-bottom:20px; }
   .warn { background:#FFF8E1; border:1px solid #e0c060; border-radius:6px;
           padding:10px 14px; font-size:.83rem; color:#7a5c00; }
   .ok   { background:#ECF7EF; border:1px solid #c3e6cb; border-radius:6px;
           padding:10px 14px; font-size:.83rem; color:#2A6A3A; }
   div[data-testid="stExpander"] { border:1px solid #E0E0DC !important; border-radius:6px !important; }
-  .char-card { background:#FAFAF8; border:1px solid #E0E0DC; border-radius:6px;
+  .char-card { background:#F5F5F3; border:1px solid #E0E0DC; border-radius:6px;
                padding:10px 12px; text-align:center; }
-  .char-name { font-weight:800; font-size:1rem; }
+  .char-name { font-weight:800; font-size:1rem; color:#111; }
   .char-cnt  { font-family:Georgia,serif; font-size:1.4rem; color:#C41E1E; }
 </style>
 """, unsafe_allow_html=True)
@@ -456,10 +471,18 @@ def run_step6_ai_suggest(chapters, api_key, model='claude-haiku-4-5-20251001'):
 
 with st.sidebar:
     st.markdown('<div style="font-family:Georgia,serif;font-size:1.05rem;'
-                'letter-spacing:.15em;border-bottom:1px solid #444;'
-                'padding-bottom:10px;margin-bottom:14px">NOVELDESK</div>',
+                'letter-spacing:.15em;border-bottom:1px solid #555;'
+                'padding-bottom:10px;margin-bottom:14px;color:#FAFAF8">NOVELDESK</div>',
                 unsafe_allow_html=True)
 
+    # ── 새 소설 시작 버튼 (소설 이름 위) ──
+    if st.button("새 소설 시작 (초기화)", use_container_width=True):
+        for k in list(st.session_state.keys()):
+            if k not in ('proj', 'api_key'):
+                del st.session_state[k]
+        st.rerun()
+
+    st.markdown("---")
     project_name = st.text_input("소설 이름", placeholder="예: 우도", key="proj")
 
     st.markdown("#### 원고 업로드")
@@ -482,24 +505,19 @@ with st.sidebar:
             st.success(f"'{t}' 등록!")
 
     st.markdown("---")
-    st.markdown("#### Claude API 키 (AI 분석용)")
+    st.markdown("#### Claude API 키 (STEP 6 전용)")
     api_key_input = st.text_input("API Key", type="password",
                                   placeholder="sk-ant-...",
                                   help="STEP 6 AI 분석에만 사용. STEP 1-5는 불필요.",
                                   key="api_key")
     if api_key_input:
         st.caption("✅ API 키 입력됨 — STEP 6 사용 가능")
-
-    st.markdown("---")
-    if st.button("새 소설 시작 (초기화)", use_container_width=True):
-        for k in list(st.session_state.keys()):
-            if k not in ('proj',):
-                del st.session_state[k]
-        st.rerun()
+    else:
+        st.caption("STEP 1~5는 API 키 없이 무료 사용 가능")
 
     st.markdown("---")
     st.markdown("""
-    <div style="font-size:.72rem;color:#888;line-height:1.8">
+    <div style="font-size:.72rem;color:#aaa;line-height:1.8">
     ✅ TXT — 텍스트 파일<br>
     ✅ DOCX — 워드 (전권 가능)<br>
     ✅ PDF — PDF 문서<br>
