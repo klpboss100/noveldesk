@@ -1,0 +1,31 @@
+# API 키 — 절대 GitHub에 올리면 안 됩니다
+.env
+*.env
+
+# 사용자 원고 파일 — 개인 소설 내용, 업로드한 파일
+web/uploads/
+projects/
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+
+# 가상 환경
+venv/
+.venv/
+
+# 분석 결과물 (로컬에서 생성됨, 개인 파일)
+*.png
+*.md
+!README.md
+!CLAUDE.md
+
+# OS 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/

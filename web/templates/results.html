@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STEP {{ step }} 결과 — NOVELDESK</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #FAFAF8; --surface: #FFFFFF; --border: #E0E0DC;
+      --border2: #EEECEA; --text: #111; --text2: #666; --text3: #BBB;
+      --red: #C41E1E; --green: #2A6A3A; --green-bg: #ECF7EF;
+      --warn-bg: #FFF8E1; --warn: #8a6d00;
+    }
+    body { font-family: -apple-system, 'Malgun Gothic', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+    .nav { border-bottom: 2px solid var(--text); padding: 15px 40px; display: flex; align-items: baseline; gap: 20px; background: var(--bg); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-family: Georgia, serif; font-size: 1.05rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); text-decoration: none; }
+    .nav-breadcrumb { font-size: 0.8rem; color: var(--text2); }
+    .nav-breadcrumb a { color: var(--text2); text-decoration: none; }
+    .nav-breadcrumb a:hover { color: var(--text); }
+    .nav-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .btn-back { font-size: 0.78rem; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 12px; text-decoration: none; background: var(--surface); }
+    .btn-back:hover { border-color: var(--text); }
+    .btn-primary { background: var(--text); color: var(--bg); border: none; border-radius: 4px; padding: 6px 14px; font-size: 0.78rem; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-primary:hover { opacity: 0.82; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 36px 40px 80px; }
+
+    .result-header { border-bottom: 2px solid var(--text); padding-bottom: 20px; margin-bottom: 32px; display: flex; align-items: flex-end; gap: 20px; }
+    .result-step-num { font-family: Georgia, serif; font-size: 3.8rem; color: var(--text); line-height: 1; min-width: 60px; }
+    .result-title-block h1 { font-size: 1.15rem; font-weight: 800; margin-bottom: 4px; }
+    .result-title-block p { font-size: 0.82rem; color: var(--text2); }
+    .result-header-actions { margin-left: auto; }
+
+    /* 결과 없음 */
+    .no-result { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 48px; text-align: center; color: var(--text2); }
+    .no-result h2 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .no-result p { font-size: 0.85rem; line-height: 1.7; }
+
+    /* 섹션 */
+    .section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+    .section-header { padding: 14px 20px; border-bottom: 1px solid var(--border2); display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+    .section-header:hover { background: #F5F5F3; }
+    .section-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; color: var(--red); text-transform: uppercase; }
+    .section-title { font-size: 0.92rem; font-weight: 700; }
+    .section-count { margin-left: auto; font-family: Georgia, serif; font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .section-toggle { font-size: 0.75rem; color: var(--text3); margin-left: 8px; }
+    .section-body { padding: 0; display: block; }
+    .section-body.collapsed { display: none; }
+
+    /* 표 */
+    .result-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .result-table th { background: #F5F5F3; padding: 8px 14px; text-align: left; font-size: 0.75rem; font-weight: 700; color: var(--text2); border-bottom: 1px solid var(--border); }
+    .result-table td { padding: 9px 14px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+    .result-table tr:last-child td { border-bottom: none; }
+    .result-table tr:hover td { background: #F9F9F7; }
+    .num { font-family: Georgia, serif; font-variant-numeric: tabular-nums; }
+    .badge-multi { display: inline-block; background: #FFF0F0; color: var(--red); font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 20px; border: 1px solid #FFCCCC; }
+    .badge-single { display: inline-block; background: #F5F5F3; color: var(--text2); font-size: 0.7rem; padding: 1px 7px; border-radius: 20px; border: 1px solid var(--border); }
+
+    /* 챕터 분포 태그 */
+    .ch-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .ch-tag { font-size: 0.7rem; padding: 1px 8px; border-radius: 3px; background: #F0F0EE; border: 1px solid var(--border); color: var(--text2); }
+
+    /* 요약 카드 그리드 */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; }
+    .summary-card .card-label { font-size: 0.72rem; color: var(--text2); margin-bottom: 4px; }
+    .summary-card .card-value { font-family: Georgia, serif; font-size: 1.6rem; font-weight: 700; }
+
+    /* 경고 박스 */
+    .warn-box { background: var(--warn-bg); border: 1px solid #e0c060; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; font-size: 0.85rem; color: var(--warn); }
+
+    /* 차트 */
+    .chart-wrap { padding: 20px; text-align: center; }
+    .chart-wrap img { max-width: 100%; border: 1px solid var(--border); border-radius: 4px; }
+
+    /* 페이싱 테이블 */
+    .pacing-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .pacing-table th { background: #F5F5F3; padding: 8px 12px; text-align: right; font-size: 0.73rem; font-weight: 700; color: var(--text2); border-bottom: 1px solid var(--border); }
+    .pacing-table th:first-child { text-align: left; }
+    .pacing-table td { padding: 8px 12px; border-bottom: 1px solid var(--border2); text-align: right; }
+    .pacing-table td:first-child { text-align: left; font-weight: 600; }
+    .pacing-table tr:last-child td { border-bottom: none; }
+
+    /* 인물 관계도 */
+    .character-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 16px; }
+    .character-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; }
+    .character-name { font-size: 1rem; font-weight: 800; margin-bottom: 4px; }
+    .character-count { font-family: Georgia, serif; font-size: 1.3rem; color: var(--red); font-weight: 700; }
+    .character-meta { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+    .character-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 8px; }
+    .character-bar-fill { height: 100%; background: var(--red); border-radius: 2px; }
+
+    /* 직급 체크 */
+    .rank-issue { background: #FFF0F0; border-left: 3px solid var(--red); padding: 10px 14px; margin: 8px 16px; border-radius: 0 4px 4px 0; font-size: 0.84rem; }
+    .rank-issue .issue-title { font-weight: 700; margin-bottom: 4px; font-size: 0.82rem; }
+    .rank-issue .issue-sentence { color: var(--text2); font-size: 0.8rem; font-style: italic; margin-top: 4px; line-height: 1.5; }
+    .rank-ok { background: var(--green-bg); border: 1px solid #c3e6cb; border-radius: 8px; padding: 20px; text-align: center; color: var(--green); font-weight: 700; margin: 16px; }
+
+    @media (max-width: 640px) {
+      .nav { padding: 12px 16px; }
+      .main { padding: 20px 16px 40px; }
+      .result-step-num { font-size: 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">Noveldesk</a>
+  <div class="nav-breadcrumb">
+    <a href="/">메인</a> &nbsp;›&nbsp;
+    {% if step == 1 %}반복 표현 탐지
+    {% elif step == 2 %}챕터 간 비교
+    {% elif step == 3 %}직급 체크
+    {% elif step == 4 %}페이싱 차트
+    {% elif step == 5 %}인물 관계도
+    {% else %}STEP {{ step }}
+    {% endif %}
+  </div>
+  <div class="nav-right">
+    <button class="btn-primary" onclick="window.print()">인쇄</button>
+    <a href="/" class="btn-back">← 메인</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="result-header">
+    <div class="result-step-num">{{ step }}</div>
+    <div class="result-title-block">
+      <h1>
+        {% if   step == 1 %}반복 표현 탐지
+        {% elif step == 2 %}챕터 간 비교 리포트
+        {% elif step == 3 %}직급·계급·직책 체크
+        {% elif step == 4 %}페이싱 차트
+        {% elif step == 5 %}인물 관계도
+        {% elif step == 6 %}AI 반복 표현 진단
+        {% elif step == 7 %}복선 탐지
+        {% elif step == 8 %}복선 회수 확인
+        {% elif step == 9 %}페이싱 AI 판단
+        {% elif step == 10 %}출판 자료
+        {% endif %}
+      </h1>
+      <p>
+        {% if project %}{{ project.name }} ·{% endif %}
+        STEP {{ step }} ·
+        {% if step <= 5 %}무료 분석{% else %}AI 유료 분석{% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% if not data %}
+    {# 결과 없음 #}
+    <div class="no-result">
+      <h2>아직 분석하지 않았습니다</h2>
+      <p>메인 페이지로 돌아가서 STEP {{ step }}을 실행해주세요.</p>
+      <br>
+      <a href="/" class="btn-primary">← 메인으로 돌아가기</a>
+    </div>
+
+  {% elif step == 1 %}
+    {# ── STEP 1: 반복 표현 탐지 ── #}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-label">분석 챕터</div>
+        <div class="card-value num">{{ data.chapter_count }}개</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">전체 글자수</div>
+        <div class="card-value num">{{ "{:,}".format(data.total_chars) }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">발견된 패턴 종류</div>
+        <div class="card-value num" style="color:var(--red)">{{ data.total_found }}종</div>
+      </div>
+    </div>
+
+    {% set categories = [
+      ('B_endings', 'B', 'AI 의심 종결어·단어'),
+      ('C_connectives', 'C', '접속·대조 구조'),
+      ('D_cliches', 'D', '묘사 클리셰'),
+      ('E_verbs', 'E', '대화 서술동사'),
+      ('F_action', 'F', '행동 묘사 클리셰'),
+    ] %}
+
+    {% for key, label, title in categories %}
+      {% set items = data[key] %}
+      {% if items %}
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+          <span class="section-label">{{ label }}</span>
+          <span class="section-title">{{ title }}</span>
+          <span class="section-count">{{ items | length }}종</span>
+          <span class="section-toggle">▲</span>
+        </div>
+        <div class="section-body">
+          <table class="result-table">
+            <thead>
+              <tr><th>표현</th><th style="text-align:right">횟수</th></tr>
+            </thead>
+            <tbody>
+              {% for pattern, count in items.items() | sort(attribute='1', reverse=True) %}
+              <tr>
+                <td>{{ pattern }}</td>
+                <td style="text-align:right"><span class="num">{{ count }}</span>회</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+
+  {% elif step == 2 %}
+    {# ── STEP 2: 챕터 간 비교 ── #}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-label">분석 챕터</div>
+        <div class="card-value num">{{ data.chapter_count }}개</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">전 챕터 반복 패턴</div>
+        <div class="card-value num" style="color:var(--red)">{{ data.total_multi }}종</div>
+      </div>
+    </div>
+
+    <div class="warn-box">
+      ⚠️ 아래 "전 챕터 반복" 표현들은 책 전체에서 습관적으로 반복되는 패턴입니다. 고칠지 말지는 작가가 직접 판단해주세요.
+    </div>
+
+    {% for cat_key, cat in data.categories.items() %}
+      {% if cat.multi %}
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+          <span class="section-label">전 챕터</span>
+          <span class="section-title">{{ cat.label }}</span>
+          <span class="section-count">{{ cat.multi | length }}종</span>
+          <span class="section-toggle">▲</span>
+        </div>
+        <div class="section-body">
+          <table class="result-table">
+            <thead>
+              <tr><th>표현</th><th>등장 챕터수</th><th style="text-align:right">총 횟수</th><th>챕터별 분포</th></tr>
+            </thead>
+            <tbody>
+              {% for item in cat.multi %}
+              <tr>
+                <td><strong>{{ item.pattern }}</strong></td>
+                <td><span class="badge-multi">{{ item.chapters | length }}개 챕터</span></td>
+                <td style="text-align:right"><span class="num">{{ item.total }}</span>회</td>
+                <td>
+                  <div class="ch-tags">
+                    {% for ch, cnt in item.chapters.items() %}
+                      <span class="ch-tag">{{ ch }} {{ cnt }}회</span>
+                    {% endfor %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+
+  {% elif step == 3 %}
+    {# ── STEP 3: 직급 체크 ── #}
+    {% if not data.has_rank_system %}
+      <div class="warn-box">
+        직급 체계(rank_system)가 설정되어 있지 않습니다.<br>
+        군계급·직장직급이 있는 소설이라면 프로젝트 폴더 안에 <code>story_bible/world.json</code> 파일을 만들고<br>
+        <code>"rank_system": { "order": ["이병", "일병", "상병", "병장"] }</code> 형태로 순서를 등록해주세요.
+      </div>
+    {% else %}
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="card-label">등록된 계급 수</div>
+          <div class="card-value num">{{ data.ranks | length }}개</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-label">역행 후보</div>
+          <div class="card-value num" style="color:var(--red)">{{ data.regressions | length }}건</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-label">동일챕터 충돌</div>
+          <div class="card-value num">{{ data.conflicts | length }}건</div>
+        </div>
+      </div>
+
+      {% if data.regressions %}
+        <div class="section">
+          <div class="section-header" onclick="toggleSection(this)">
+            <span class="section-label" style="color:var(--red)">주의</span>
+            <span class="section-title">계급 역행 후보 — 검토 필요</span>
+            <span class="section-count" style="color:var(--red)">{{ data.regressions | length }}건</span>
+            <span class="section-toggle">▲</span>
+          </div>
+          <div class="section-body">
+            {% for issue in data.regressions %}
+              <div class="rank-issue">
+                <div class="issue-title">{{ issue.name }} : {{ issue.prev_rank }}({{ issue.prev_ch }}화) → {{ issue.curr_rank }}({{ issue.curr_ch }}화) — 역행 가능성</div>
+                {% if issue.sentence %}
+                  <div class="issue-sentence">"{{ issue.sentence[:100] }}{% if issue.sentence | length > 100 %}...{% endif %}"</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <div class="rank-ok">계급 역행 없음 — 이상 없습니다</div>
+      {% endif %}
+
+      {% if data.timeline %}
+        <div class="section">
+          <div class="section-header" onclick="toggleSection(this)">
+            <span class="section-label">타임라인</span>
+            <span class="section-title">인물별 계급 타임라인</span>
+            <span class="section-toggle">▲</span>
+          </div>
+          <div class="section-body">
+            <table class="result-table">
+              <thead><tr><th>인물</th><th>계급 기록</th></tr></thead>
+              <tbody>
+                {% for name, refs in data.timeline.items() %}
+                <tr>
+                  <td><strong>{{ name }}</strong></td>
+                  <td>
+                    <div class="ch-tags">
+                      {% for ref in refs %}
+                        <span class="ch-tag">{{ ref.ch }}화-{{ ref.rank }}</span>
+                      {% endfor %}
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+
+  {% elif step == 4 %}
+    {# ── STEP 4: 페이싱 차트 ── #}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-label">분석 챕터</div>
+        <div class="card-value num">{{ data.chapter_count }}개</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">평균 글자수</div>
+        <div class="card-value num">{{ "{:,.0f}".format(data.averages.chars) }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">평균 문장 길이</div>
+        <div class="card-value num">{{ "%.1f"|format(data.averages.sent_mean) }}자</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">평균 대화 비중</div>
+        <div class="card-value num">{{ "%.1f"|format(data.averages.dialogue_ratio) }}%</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-label">차트</span>
+        <span class="section-title">페이싱 그래프 (글자수 · 문장평균길이 · 대화비중)</span>
+        <span class="section-toggle">▲</span>
+      </div>
+      <div class="section-body">
+        {% if project %}
+        <div class="chart-wrap">
+          <img src="/uploads/{{ project.name }}/step4_chart.png" alt="페이싱 차트" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <p style="display:none;color:var(--text2);padding:20px">차트 이미지를 불러올 수 없습니다.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-label">데이터</span>
+        <span class="section-title">챕터별 수치</span>
+        <span class="section-toggle">▲</span>
+      </div>
+      <div class="section-body" style="overflow-x:auto">
+        <table class="pacing-table">
+          <thead>
+            <tr>
+              <th>챕터</th>
+              <th>글자수(공백제외)</th>
+              <th>문장 평균 길이</th>
+              <th>대화 비중</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data.rows %}
+            <tr>
+              <td>{{ row.file | replace('.txt','') }}</td>
+              <td>{{ "{:,}".format(row.chars) }}자</td>
+              <td>{{ "%.1f"|format(row.sent_mean) }}자</td>
+              <td>{{ "%.1f"|format(row.dialogue_ratio * 100) }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  {% elif step == 5 %}
+    {# ── STEP 5: 인물 관계도 ── #}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-label">분석 챕터</div>
+        <div class="card-value num">{{ data.chapter_count }}개</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">인물 후보</div>
+        <div class="card-value num" style="color:var(--red)">{{ data.total_candidates }}명</div>
+      </div>
+    </div>
+
+    <div class="warn-box">
+      인물 이름처럼 보이는 단어를 자동으로 추출했습니다. 실제 인물명이 아닌 것도 섞여 있을 수 있습니다.
+    </div>
+
+    {% if data.character_candidates %}
+      {% set max_total = data.character_candidates[0].total %}
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+          <span class="section-label">등장 빈도</span>
+          <span class="section-title">인물 후보 — 전체 등장 횟수 순</span>
+          <span class="section-count">{{ data.total_candidates }}명</span>
+          <span class="section-toggle">▲</span>
+        </div>
+        <div class="section-body">
+          <div class="character-grid">
+            {% for char in data.character_candidates %}
+            <div class="character-card">
+              <div class="character-name">{{ char.name }}</div>
+              <div class="character-count">{{ char.total }}회</div>
+              <div class="character-meta">{{ char.chapter_count }}개 챕터 등장</div>
+              <div class="character-bar">
+                <div class="character-bar-fill" style="width:{{ (char.total / max_total * 100) | int }}%"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)">
+          <span class="section-label">챕터별</span>
+          <span class="section-title">챕터별 등장 분포</span>
+          <span class="section-toggle">▲</span>
+        </div>
+        <div class="section-body" style="overflow-x:auto">
+          <table class="result-table">
+            <thead>
+              <tr><th>인물</th><th style="text-align:right">총 등장</th><th>챕터별 분포</th></tr>
+            </thead>
+            <tbody>
+              {% for char in data.character_candidates %}
+              <tr>
+                <td><strong>{{ char.name }}</strong></td>
+                <td style="text-align:right"><span class="num">{{ char.total }}</span>회</td>
+                <td>
+                  <div class="ch-tags">
+                    {% for ch, cnt in char.chapters.items() | sort %}
+                      <span class="ch-tag">{{ ch }} {{ cnt }}회</span>
+                    {% endfor %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    {# STEP 6-10: 아직 준비 중 #}
+    <div class="no-result">
+      <h2>AI 유료 분석 — 준비 중</h2>
+      <p>STEP {{ step }}은 Claude AI API를 사용하는 유료 분석입니다.<br>곧 추가될 예정입니다.</p>
+      <br>
+      <a href="/" class="btn-primary">← 메인으로 돌아가기</a>
+    </div>
+  {% endif %}
+
+</main>
+
+<script>
+function toggleSection(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.section-toggle');
+  const collapsed = body.classList.toggle('collapsed');
+  toggle.textContent = collapsed ? '▼' : '▲';
+}
+</script>
+</body>
+</html>

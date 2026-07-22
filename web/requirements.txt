@@ -1,0 +1,8 @@
+# NOVELDESK 웹앱 필요 패키지 목록
+# 설치 방법: pip install -r requirements.txt
+
+flask>=3.0.0          # 웹 서버 (핵심)
+python-docx>=1.1.0    # DOCX(워드) 파일 읽기
+python-dotenv>=1.0.0  # .env 파일에서 API 키 읽기 (기존 engine/ 코드에서 사용)
+anthropic>=0.25.0     # Claude AI API (기존 engine/ 코드에서 사용)
+matplotlib>=3.8.0     # 페이싱 차트 그래프 그리기

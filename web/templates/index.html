@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NOVELDESK — 소설 분석 도구</title>
+  <style>
+    /* ══════════════════════════════════════
+       NOVELDESK — Design C (편집자형)
+       흰색 배경 + 검정 + 빨강
+    ══════════════════════════════════════ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #FAFAF8;
+      --surface: #FFFFFF;
+      --border:  #E0E0DC;
+      --border2: #EEECEA;
+      --text:    #111111;
+      --text2:   #888888;
+      --text3:   #BBBBBB;
+      --red:     #C41E1E;
+      --green:   #2A6A3A;
+      --green-bg:#ECF7EF;
+      --amber:   #854D0E;
+      --amber-bg:#FFF7ED;
+    }
+
+    body {
+      font-family: -apple-system, 'Malgun Gothic', '맑은 고딕', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── 네비게이션 ── */
+    .nav {
+      border-bottom: 2px solid var(--text);
+      padding: 15px 40px;
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-logo {
+      font-family: Georgia, '바탕', serif;
+      font-size: 1.05rem;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-project {
+      font-size: 0.8rem;
+      color: var(--text2);
+      border-left: 1px solid var(--border);
+      padding-left: 18px;
+    }
+    .nav-project strong { color: var(--text); }
+    .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .nav-link {
+      font-size: 0.78rem;
+      color: var(--text2);
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+    }
+    .nav-link:hover { color: var(--text); }
+    .nav-guide-btn {
+      font-size: 0.76rem;
+      color: var(--red);
+      border: 1px solid var(--red);
+      border-radius: 4px;
+      padding: 4px 11px;
+      cursor: pointer;
+      background: none;
+      font-family: inherit;
+      text-decoration: none;
+    }
+    .nav-guide-btn:hover { background: #FFF0F0; }
+
+    /* ── 메인 컨텐츠 영역 ── */
+    .main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 36px 40px 60px;
+    }
+
+    /* ══════════════════════════════════════
+       섹션 1: 원고 파일 불러오기
+    ══════════════════════════════════════ */
+    .upload-section {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 32px;
+      background: var(--surface);
+    }
+    .upload-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 16px;
+    }
+
+    /* 파일 형식 태그 */
+    .format-tags {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .fmt-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--text2);
+      background: var(--bg);
+    }
+    .fmt-tag.supported {
+      border-color: var(--text);
+      color: var(--text);
+      background: var(--surface);
+    }
+    .fmt-tag.soon {
+      color: var(--text3);
+      border-style: dashed;
+    }
+
+    /* 프로젝트 이름 입력 */
+    .project-name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .project-name-label {
+      font-size: 0.78rem;
+      color: var(--text2);
+      white-space: nowrap;
+    }
+    .project-name-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 7px 12px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 260px;
+    }
+    .project-name-input:focus {
+      outline: none;
+      border-color: var(--text);
+    }
+
+    /* 업로드 방법 두 가지 */
+    .upload-methods {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    /* 파일 드래그 앤 드롭 영역 */
+    .drop-zone {
+      border: 1px dashed var(--border);
+      border-radius: 7px;
+      padding: 22px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--text);
+      background: #F5F5F3;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-zone-icon {
+      font-size: 1.4rem;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+    .drop-zone h4 {
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .drop-zone p {
+      font-size: 0.76rem;
+      color: var(--text2);
+    }
+    .drop-zone .sub {
+      font-size: 0.7rem;
+      color: var(--text3);
+      margin-top: 6px;
+    }
+
+    /* 붙여넣기 영역 */
+    .paste-zone {
+      border: 1px dashed var(--border);
+      border-radius: 7px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .paste-zone h4 {
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .paste-zone p {
+      font-size: 0.76rem;
+      color: var(--text2);
+    }
+    .paste-textarea {
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      resize: vertical;
+      min-height: 80px;
+    }
+    .paste-textarea:focus { outline: none; border-color: var(--text); }
+    .paste-chapter-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .paste-chapter-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      font-family: inherit;
+      background: var(--bg);
+    }
+    .paste-chapter-input:focus { outline: none; border-color: var(--text); }
+
+    /* 버튼 */
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: 5px;
+      padding: 8px 18px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.1s;
+    }
+    .btn-primary:hover { opacity: 0.82; }
+    .btn-secondary {
+      background: none;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 7px 14px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { border-color: var(--text); }
+    .btn-red {
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 7px 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    /* 팁 줄 */
+    .upload-tips {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border2);
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .tip {
+      font-size: 0.73rem;
+      color: var(--text3);
+    }
+    .tip strong { color: var(--text2); }
+
+    /* ══════════════════════════════════════
+       섹션 2: 분석 현황 배너
+       (원고가 로드됐을 때만 표시)
+    ══════════════════════════════════════ */
+    .banner {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 22px;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: flex-end;
+      gap: 22px;
+      flex-wrap: wrap;
+    }
+    .banner-num {
+      font-family: Georgia, serif;
+      font-size: 3.8rem;
+      font-weight: 400;
+      color: var(--text);
+      line-height: 1;
+    }
+    .banner-text h2 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .banner-text p { font-size: 0.8rem; color: var(--text2); }
+    .banner-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* 통계 스트립 */
+    .stats-strip {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      overflow: hidden;
+      margin-bottom: 30px;
+    }
+    .stat-cell {
+      flex: 1;
+      padding: 12px 14px;
+      border-right: 1px solid var(--border);
+      text-align: center;
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-num {
+      font-family: Georgia, serif;
+      font-size: 1.5rem;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-num.warn { color: var(--red); }
+    .stat-lbl {
+      font-size: 0.64rem;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    /* ══════════════════════════════════════
+       섹션 3: STEP 목록
+    ══════════════════════════════════════ */
+
+    /* 그룹 구분선 */
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .group-tag {
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .tag-free {
+      background: var(--text);
+      color: var(--bg);
+    }
+    .tag-paid {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .group-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* STEP 행 */
+    .step-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border2);
+      gap: 12px;
+    }
+    .step-num {
+      font-family: Georgia, serif;
+      font-size: 1.05rem;
+      color: var(--text3);
+      width: 32px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .step-row.done   .step-num { color: var(--text); }
+    .step-row.active .step-num { color: var(--red); }
+
+    .step-body { flex: 1; min-width: 0; }
+    .step-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .step-row.locked .step-name { color: var(--text3); }
+    .step-desc {
+      font-size: 0.76rem;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .step-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .tag-done  { background: var(--green-bg); color: var(--green); }
+    .tag-wait  { background: #FFF0F0;         color: var(--red); }
+    .tag-pend  { background: #F5F5F3;         color: #AAA; }
+    .tag-ai    { background: var(--amber-bg); color: var(--amber); }
+
+    .step-btn {
+      background: none;
+      border: 1px solid var(--text);
+      border-radius: 4px;
+      padding: 5px 12px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      color: var(--text);
+      flex-shrink: 0;
+      transition: all 0.1s;
+    }
+    .step-btn:hover { background: var(--text); color: var(--bg); }
+    .step-btn.primary {
+      background: var(--red);
+      border-color: var(--red);
+      color: #fff;
+    }
+    .step-btn.primary:hover { opacity: 0.85; }
+    .step-btn.ghost {
+      border-color: var(--border);
+      color: var(--text3);
+      cursor: default;
+    }
+    .step-btn.ghost:hover { background: none; color: var(--text3); }
+
+    /* AI 안내 메시지 */
+    .paid-notice {
+      background: var(--amber-bg);
+      border: 1px solid #F3D9A0;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 14px 0 8px;
+      font-size: 0.8rem;
+      color: var(--amber);
+    }
+    .paid-notice strong { display: block; margin-bottom: 3px; }
+
+    .group-gap { margin-bottom: 28px; }
+
+    /* ══════════════════════════════════════
+       섹션 4: 처음 사용 가이드 (접이식)
+    ══════════════════════════════════════ */
+    .guide-section {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 32px;
+    }
+    .guide-toggle {
+      width: 100%;
+      background: #F5F5F3;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+    }
+    .guide-toggle-left { display: flex; align-items: center; gap: 10px; }
+    .guide-toggle-title { font-size: 0.9rem; font-weight: 800; color: var(--text); }
+    .guide-toggle-sub { font-size: 0.76rem; color: var(--text2); }
+    .guide-toggle-arrow { font-size: 0.75rem; color: var(--text2); transition: transform 0.2s; }
+    .guide-toggle.open .guide-toggle-arrow { transform: rotate(180deg); }
+
+    .guide-body {
+      display: none;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .guide-body.open { display: grid; }
+    .guide-item { display: flex; gap: 12px; }
+    .guide-num {
+      font-family: Georgia, serif;
+      font-size: 1.3rem;
+      color: var(--red);
+      flex-shrink: 0;
+      width: 22px;
+      line-height: 1.2;
+    }
+    .guide-item h4 { font-size: 0.84rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .guide-item p  { font-size: 0.77rem; color: var(--text2); line-height: 1.6; }
+
+    /* ── 반응형 (모바일) ── */
+    @media (max-width: 640px) {
+      .nav       { padding: 12px 16px; }
+      .main      { padding: 20px 16px 40px; }
+      .upload-methods  { grid-template-columns: 1fr; }
+      .guide-body      { grid-template-columns: 1fr; }
+      .banner    { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .banner-actions { margin-left: 0; }
+    }
+
+    /* ── 알림 토스트 ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--text);
+      color: var(--bg);
+      border-radius: 7px;
+      padding: 12px 18px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      z-index: 9999;
+      transform: translateY(60px);
+      opacity: 0;
+      transition: all 0.25s;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: var(--red); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     네비게이션 바
+══════════════════════════════════════ -->
+<nav class="nav">
+  <a href="/" class="nav-logo">Noveldesk</a>
+
+  {% if project %}
+    <div class="nav-project">
+      현재 원고: <strong>{{ project.name }}</strong>
+      {% if stats.chapter_count > 0 %}
+        (전 {{ stats.chapter_count }}화)
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="nav-right">
+    {% if project %}
+      <a href="/clear-project" class="nav-link">원고 교체</a>
+    {% endif %}
+    <a href="#guide" class="nav-guide-btn" onclick="toggleGuide()">? 사용법</a>
+  </div>
+</nav>
+
+
+<!-- ══════════════════════════════════════
+     메인 컨텐츠
+══════════════════════════════════════ -->
+<main class="main">
+
+  <!-- ─── 1. 원고 파일 불러오기 ─── -->
+  <div class="upload-section">
+    <div class="upload-title">원고 파일 불러오기</div>
+
+    <!-- 지원 파일 형식 태그 -->
+    <div class="format-tags">
+      <span class="fmt-tag supported">HWP / HWPX</span>
+      <span class="fmt-tag supported">DOCX (Word)</span>
+      <span class="fmt-tag supported">TXT</span>
+      <span class="fmt-tag soon">PDF (준비중)</span>
+      <span class="fmt-tag soon">Google Docs (준비중)</span>
+    </div>
+
+    <!-- 소설 이름 입력 -->
+    <div class="project-name-row">
+      <span class="project-name-label">소설 이름:</span>
+      <input
+        type="text"
+        class="project-name-input"
+        id="projectNameInput"
+        placeholder="예: 우도, 검은바다"
+        value="{{ project.name if project else '' }}"
+      >
+    </div>
+
+    <!-- 파일 가져오기 + 붙여넣기 -->
+    <div class="upload-methods">
+
+      <!-- 방법 1: 파일 드래그 앤 드롭 -->
+      <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+        <input type="hidden" name="project_name" id="uploadProjectName">
+        <div
+          class="drop-zone"
+          id="dropZone"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)"
+        >
+          <input
+            type="file"
+            name="files"
+            multiple
+            accept=".txt,.docx,.hwpx,.hwp,.pdf"
+            onchange="handleFileSelect(this)"
+          >
+          <div class="drop-zone-icon">↑</div>
+          <h4>파일 / 폴더 가져오기</h4>
+          <p>여기에 파일을 끌어다 놓거나<br>클릭해서 선택하세요</p>
+          <div class="sub" id="fileSelectedMsg">HWPX · DOCX · TXT 지원</div>
+        </div>
+      </form>
+
+      <!-- 방법 2: 텍스트 붙여넣기 -->
+      <form action="/paste" method="post" id="pasteForm">
+        <input type="hidden" name="project_name" id="pasteProjectName">
+        <div class="paste-zone">
+          <h4>원고 직접 붙여넣기</h4>
+          <p>텍스트를 복사 후 아래에 붙여넣기 (Ctrl+V)</p>
+          <textarea
+            class="paste-textarea"
+            name="content"
+            placeholder="여기에 원고를 붙여넣으세요..."
+            rows="4"
+          ></textarea>
+          <div class="paste-chapter-row">
+            <input
+              type="text"
+              class="paste-chapter-input"
+              name="chapter_name"
+              placeholder="화수 이름 (예: 제1화)"
+            >
+            <button type="submit" class="btn-primary" onclick="setPasteProject()">저장</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- 팁 -->
+    <div class="upload-tips">
+      <div class="tip"><strong>권장 형식:</strong> 화당 TXT 파일 1개</div>
+      <div class="tip"><strong>파일명 규칙:</strong> 제1화.txt, 제2화.txt …</div>
+      <div class="tip"><strong>최소 분량:</strong> 챕터당 2,000자 이상</div>
+    </div>
+  </div>
+
+
+  <!-- ─── 2. 분석 현황 배너 (원고가 로드됐을 때) ─── -->
+  {% if project and stats.chapter_count > 0 %}
+  <div class="banner">
+    <div class="banner-num">{{ stats.chapter_count }}</div>
+    <div class="banner-text">
+      <h2>{{ project.name }} — 분석 준비 완료</h2>
+      <p>
+        무료 {{ stats.completed_steps | length }} / 5 완료
+        {% if stats.completed_steps %}
+          &nbsp;·&nbsp; 다음: STEP {{ (range(1,6) | list | reject('in', stats.completed_steps) | list)[0] }}
+        {% else %}
+          &nbsp;·&nbsp; STEP 1부터 시작하세요
+        {% endif %}
+      </p>
+    </div>
+    <div class="banner-actions">
+      <button class="btn-secondary" onclick="location.href='/clear-project'">원고 교체</button>
+      {% set next_step = (range(1,6) | list | reject('in', stats.completed_steps) | list) %}
+      {% if next_step %}
+        <button class="btn-red" onclick="runStep({{ next_step[0] }})">
+          STEP {{ next_step[0] }} 실행 →
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 통계 스트립 -->
+  <div class="stats-strip">
+    <div class="stat-cell">
+      <div class="stat-num">{{ stats.chapter_count }}</div>
+      <div class="stat-lbl">챕터</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num {{ 'warn' if stats.results.get('repeat_count', 0) > 0 else '' }}">
+        {{ stats.results.get('repeat_count', '—') }}
+      </div>
+      <div class="stat-lbl">반복 표현</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num {{ 'warn' if stats.results.get('rank_errors', 0) > 0 else '' }}">
+        {{ stats.results.get('rank_errors', '—') }}
+      </div>
+      <div class="stat-lbl">직급 오류</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">{{ stats.completed_steps | length }} / 5</div>
+      <div class="stat-lbl">무료 완료</div>
+    </div>
+  </div>
+  {% endif %}
+
+
+  <!-- ─── 3. STEP 목록 ─── -->
+
+  <!-- 무료 그룹 (STEP 1–5) -->
+  <div class="group-header">
+    <span class="group-tag tag-free">무료 STEP 1–5</span>
+    <div class="group-line"></div>
+  </div>
+
+  {% set free_steps = [
+    (1, '반복 표현 탐지',        '챕터 간 비교 · AI 클리셰 패턴 분석'),
+    (2, '문맥 리포트',           '반복 표현이 쓰인 실제 문장 챕터별 정리'),
+    (3, '직급·계급·직책 체크',   '직장직급 / 군계급 / 직책명 순서 오류 탐지'),
+    (4, '페이싱 차트',           '글자수 · 문장 평균 길이 · 대화 비중 그래프'),
+    (5, '인물 관계도',           '인물 등장 빈도 · 챕터별 연결 그래프'),
+  ] %}
+
+  {% for num, name, desc in free_steps %}
+    {% set is_done   = num in stats.get('completed_steps', []) %}
+    {% set next_free = (range(1,6) | list | reject('in', stats.get('completed_steps', [])) | list) %}
+    {% set is_active = next_free and next_free[0] == num and project %}
+    {% set row_class = 'done' if is_done else ('active' if is_active else '') %}
+
+  <div class="step-row {{ row_class }}">
+    <div class="step-num">{{ num }}</div>
+    <div class="step-body">
+      <div class="step-name">{{ name }}</div>
+      <div class="step-desc">{{ desc }}</div>
+    </div>
+    {% if is_done %}
+      <span class="step-tag tag-done">완료</span>
+      <button class="step-btn" onclick="location.href='/results/{{ num }}'">결과 보기</button>
+    {% elif is_active %}
+      <span class="step-tag tag-wait">대기 중</span>
+      <button class="step-btn primary" onclick="runStep({{ num }})">실행</button>
+    {% elif project %}
+      <span class="step-tag tag-pend">대기</span>
+      <button class="step-btn" onclick="runStep({{ num }})">실행</button>
+    {% else %}
+      <span class="step-tag tag-pend">대기</span>
+      <button class="step-btn ghost">원고 필요</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="group-gap"></div>
+
+  <!-- 유료 그룹 (STEP 6–10) -->
+  <div class="group-header">
+    <span class="group-tag tag-paid">AI 유료 STEP 6–10 — 선택 실행</span>
+    <div class="group-line"></div>
+  </div>
+
+  <div class="paid-notice">
+    <strong>선택 실행이란?</strong>
+    무료 STEP 결과를 보고 "AI한테 더 자세히 물어보고 싶다"고 느낄 때만 실행하세요.
+    각 STEP마다 Claude API 비용이 발생합니다. 안 써도 됩니다.
+  </div>
+
+  {% set paid_steps = [
+    (6,  'AI 반복 표현 진단',  '대안 문장 자동 제안 · Claude API 호출'),
+    (7,  '복선 탐지',          '전반부 암시·설정 목록화 · Claude API 호출'),
+    (8,  '복선 회수 확인',     '후반부에서 복선 해결 여부 판정 · Claude API 호출'),
+    (9,  '페이싱 AI 판단',     '이상 챕터 의도적인지 문제인지 판단 · Claude API 호출'),
+    (10, '출판 자료 생성',     '책 소개문 / 보도자료 / SNS 홍보 키트 · Claude API 호출'),
+  ] %}
+
+  {% for num, name, desc in paid_steps %}
+  <div class="step-row locked">
+    <div class="step-num">{{ num }}</div>
+    <div class="step-body">
+      <div class="step-name">{{ name }}</div>
+      <div class="step-desc">{{ desc }}</div>
+    </div>
+    <span class="step-tag tag-ai">AI</span>
+    {% if project %}
+      <button class="step-btn" onclick="runPaidStep({{ num }})">선택 실행</button>
+    {% else %}
+      <button class="step-btn ghost">원고 필요</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+
+  <!-- ─── 4. 사용 가이드 (접이식) ─── -->
+  <div class="guide-section" id="guide">
+    <button class="guide-toggle" id="guideToggle" onclick="toggleGuide()">
+      <div class="guide-toggle-left">
+        <span class="guide-toggle-title">처음 사용하시나요? — 4단계 시작 가이드</span>
+        <span class="guide-toggle-sub">클릭해서 펼치기</span>
+      </div>
+      <span class="guide-toggle-arrow" id="guideArrow">▼</span>
+    </button>
+    <div class="guide-body" id="guideBody" style="display:none;">
+      <div class="guide-item">
+        <div class="guide-num">1</div>
+        <div>
+          <h4>원고 파일 준비하기</h4>
+          <p>
+            챕터(화)별로 파일을 나눠서 한 폴더에 넣으세요.<br>
+            파일명에 "제1화", "제2화"처럼 화수를 넣으면 자동으로 순서를 인식합니다.<br>
+            <strong>TXT 형식이 가장 빠릅니다.</strong> 한글(HWP)·워드(DOCX)도 됩니다.
+          </p>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-num">2</div>
+        <div>
+          <h4>무료 STEP 1–5를 순서대로 실행</h4>
+          <p>
+            위의 버튼을 1번부터 차례로 눌러서 실행하세요.<br>
+            각 STEP은 보통 1~3분이면 완료됩니다.<br>
+            완료되면 "결과 보기" 버튼이 나타납니다.
+          </p>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-num">3</div>
+        <div>
+          <h4>결과 확인 후 수정 여부를 직접 결정</h4>
+          <p>
+            결과는 <strong>"이런 부분이 있어요"</strong>라는 제안입니다.<br>
+            고칠지 말지는 항상 <strong>작가님이 결정</strong>합니다.<br>
+            AI도 틀릴 수 있으니 참고만 하세요.
+          </p>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-num">4</div>
+        <div>
+          <h4>더 깊이 분석하고 싶으면 STEP 6–10</h4>
+          <p>
+            무료 결과를 보고 "AI한테 더 물어보고 싶다"고 느낄 때만<br>
+            아래쪽 유료 STEP을 선택해서 실행하세요.<br>
+            각 STEP마다 Claude API 비용이 약 수백 원 발생합니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+
+<!-- ─── 알림 토스트 (화면 오른쪽 아래 팝업) ─── -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+/* ══════════════════════════════════════
+   자바스크립트 — 페이지 인터랙션 처리
+
+   자바스크립트란? 웹 페이지를 살아 움직이게 만드는 언어입니다.
+   버튼을 누르면 무슨 일이 일어나는지 여기서 정의합니다.
+══════════════════════════════════════ */
+
+// ── 소설 이름 자동 연동 ──
+// 소설 이름 입력창에 타이핑하면 업로드 폼에도 자동으로 들어갑니다
+document.getElementById('projectNameInput').addEventListener('input', function() {
+  document.getElementById('uploadProjectName').value = this.value;
+  document.getElementById('pasteProjectName').value  = this.value;
+});
+// 페이지 처음 로드할 때도 값 설정
+window.addEventListener('DOMContentLoaded', function() {
+  const val = document.getElementById('projectNameInput').value;
+  document.getElementById('uploadProjectName').value = val;
+  document.getElementById('pasteProjectName').value  = val;
+});
+
+// ── 붙여넣기 폼 제출 전 프로젝트 이름 확인 ──
+function setPasteProject() {
+  const name = document.getElementById('projectNameInput').value.trim();
+  if (!name) {
+    showToast('소설 이름을 먼저 입력해주세요.', 'error');
+    return false;
+  }
+  document.getElementById('pasteProjectName').value = name;
+}
+
+// ── 파일 드래그 앤 드롭 처리 ──
+// 드래그 앤 드롭이란? 파일을 마우스로 끌어다 웹 페이지 위에 올려놓는 것입니다
+
+function handleDragOver(e) {
+  e.preventDefault();  // 브라우저 기본 동작 막기
+  document.getElementById('dropZone').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('dropZone').classList.remove('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('dragover');
+
+  const name = document.getElementById('projectNameInput').value.trim();
+  if (!name) {
+    showToast('소설 이름을 먼저 입력해주세요.', 'error');
+    return;
+  }
+  document.getElementById('uploadProjectName').value = name;
+
+  // 드롭된 파일들을 폼에 넣고 자동 제출
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    const msg = `${files.length}개 파일 선택됨 — 업로드 중...`;
+    document.getElementById('fileSelectedMsg').textContent = msg;
+    showToast(`${files.length}개 파일을 업로드합니다...`);
+    document.getElementById('uploadForm').submit();
+  }
+}
+
+// ── 파일 선택 버튼으로 파일 고를 때 ──
+function handleFileSelect(input) {
+  const name = document.getElementById('projectNameInput').value.trim();
+  if (!name) {
+    showToast('소설 이름을 먼저 입력해주세요.', 'error');
+    input.value = '';
+    return;
+  }
+  document.getElementById('uploadProjectName').value = name;
+
+  if (input.files.length > 0) {
+    const msg = `${input.files.length}개 파일 선택됨`;
+    document.getElementById('fileSelectedMsg').textContent = msg;
+    showToast(`${input.files.length}개 파일을 업로드합니다...`);
+    document.getElementById('uploadForm').submit();
+  }
+}
+
+// ── STEP 실행 (무료) ──
+// fetch란? 페이지를 새로 고치지 않고 서버에 요청을 보내는 것입니다
+function runStep(stepNum) {
+  showToast(`STEP ${stepNum} 실행 중... 잠시만 기다려주세요.`);
+
+  fetch(`/run-step/${stepNum}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast(`STEP ${stepNum} 완료! 결과를 확인하세요.`);
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast(data.error || '오류가 발생했습니다.', 'error');
+    }
+  })
+  .catch(err => {
+    showToast('서버 연결 오류가 발생했습니다.', 'error');
+    console.error(err);
+  });
+}
+
+// ── STEP 실행 (유료 AI) ──
+function runPaidStep(stepNum) {
+  // 실행 전 확인 메시지
+  const confirmed = confirm(
+    `STEP ${stepNum}는 Claude AI를 사용합니다.\n` +
+    `실행하면 API 비용(수백 원~수천 원)이 발생합니다.\n\n` +
+    `계속 실행하시겠습니까?`
+  );
+  if (!confirmed) return;
+
+  showToast(`STEP ${stepNum} AI 분석 중... 시간이 걸릴 수 있습니다.`);
+  // TODO: 유료 STEP 실행 연결
+}
+
+// ── 사용 가이드 접이식 토글 ──
+function toggleGuide() {
+  const body    = document.getElementById('guideBody');
+  const toggle  = document.getElementById('guideToggle');
+  const arrow   = document.getElementById('guideArrow');
+  const isOpen  = body.style.display !== 'none';
+
+  body.style.display = isOpen ? 'none' : 'grid';
+  toggle.classList.toggle('open', !isOpen);
+  arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+// ── 토스트 알림 (화면 아래 팝업 메시지) ──
+// 토스트란? 화면 아래쪽에서 잠깐 나타났다 사라지는 알림 메시지입니다
+function showToast(msg, type = '') {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className   = 'toast' + (type ? ' ' + type : '');
+
+  // 잠깐 보여주다가 사라지게
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+</script>
+
+</body>
+</html>
