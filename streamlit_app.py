@@ -24,23 +24,10 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-  /* 사이드바 배경 검정, 텍스트 흰색 */
-  [data-testid="stSidebar"] { background:#111 !important; }
-  [data-testid="stSidebar"] label,
-  [data-testid="stSidebar"] p,
-  [data-testid="stSidebar"] span,
-  [data-testid="stSidebar"] div,
-  [data-testid="stSidebar"] h1,
-  [data-testid="stSidebar"] h2,
-  [data-testid="stSidebar"] h3,
-  [data-testid="stSidebar"] small,
-  [data-testid="stSidebar"] caption { color:#FAFAF8 !important; }
-  /* 사이드바 버튼은 흰 배경·검정 글씨 */
-  [data-testid="stSidebar"] button { background:#333 !important; color:#FAFAF8 !important; border:1px solid #555 !important; }
-  [data-testid="stSidebar"] button:hover { background:#555 !important; }
-  /* 사이드바 입력창 */
-  [data-testid="stSidebar"] input,
-  [data-testid="stSidebar"] textarea { background:#222 !important; color:#FAFAF8 !important; border-color:#444 !important; }
+  /* 사이드바 — 흰 배경, 검정 글씨 */
+  [data-testid="stSidebar"] { background:#FAFAF8 !important; }
+  [data-testid="stSidebar"] button { background:#111 !important; color:#FAFAF8 !important; border:none !important; }
+  [data-testid="stSidebar"] button:hover { background:#333 !important; }
 
   /* 메인 영역 — 기본 검정 글씨 */
   .nd-logo { font-family:Georgia,serif; font-size:1.5rem; letter-spacing:.15em;
@@ -471,8 +458,8 @@ def run_step6_ai_suggest(chapters, api_key, model='claude-haiku-4-5-20251001'):
 
 with st.sidebar:
     st.markdown('<div style="font-family:Georgia,serif;font-size:1.05rem;'
-                'letter-spacing:.15em;border-bottom:1px solid #555;'
-                'padding-bottom:10px;margin-bottom:14px;color:#FAFAF8">NOVELDESK</div>',
+                'letter-spacing:.15em;border-bottom:1px solid #ccc;'
+                'padding-bottom:10px;margin-bottom:14px;color:#111">NOVELDESK</div>',
                 unsafe_allow_html=True)
 
     # ── 새 소설 시작 버튼 (소설 이름 위) ──
@@ -517,7 +504,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("""
-    <div style="font-size:.72rem;color:#aaa;line-height:1.8">
+    <div style="font-size:.72rem;color:#666;line-height:1.8">
     ✅ TXT — 텍스트 파일<br>
     ✅ DOCX — 워드 (전권 가능)<br>
     ✅ PDF — PDF 문서<br>
