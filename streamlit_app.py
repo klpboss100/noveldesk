@@ -389,7 +389,7 @@ with st.sidebar:
     st.markdown('<div style="font-family:Georgia,serif;font-size:1.1rem;letter-spacing:0.15em;color:#FAFAF8;font-weight:400;border-bottom:1px solid #444;padding-bottom:10px;margin-bottom:16px">NOVELDESK</div>', unsafe_allow_html=True)
 
     st.markdown("#### 소설 이름")
-    project_name = st.text_input("", placeholder="예: 우도, 달빛소나타...", label_visibility="collapsed", key="project_name_input")
+    project_name = st.text_input("소설 이름 입력", placeholder="예: 우도, 달빛소나타...", label_visibility="collapsed", key="project_name_input")
 
     st.markdown("#### 원고 업로드")
     st.caption("TXT · DOCX · PDF 지원 | 여러 파일 동시 업로드 가능")
