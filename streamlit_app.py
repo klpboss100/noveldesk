@@ -28,6 +28,9 @@ st.markdown("""
   [data-testid="stSidebar"] { background:#FAFAF8 !important; }
   [data-testid="stSidebar"] button { background:#111 !important; color:#FAFAF8 !important; border:none !important; }
   [data-testid="stSidebar"] button:hover { background:#333 !important; }
+  /* 입력창 박스 — 기존 회색 유지 */
+  [data-testid="stSidebar"] input,
+  [data-testid="stSidebar"] textarea { background:#E8E8E6 !important; color:#111 !important; border:1px solid #ccc !important; }
 
   /* 메인 영역 — 기본 검정 글씨 */
   .nd-logo { font-family:Georgia,serif; font-size:1.5rem; letter-spacing:.15em;
