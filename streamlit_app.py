@@ -24,20 +24,28 @@ st.set_page_config(
 
 st.markdown("""
 <script>
-/* 화면 사라짐 방지: WebSocket 연결이 끊기면 30초 후 자동 새로고침 */
 (function(){
-  var lostAt = null;
-  var CHECK_MS = 3000;
-  var RELOAD_AFTER_MS = 30000;
-  function checkConnection(){
-    var el = document.querySelector('[data-testid="stStatusWidget"]');
-    var lost = el && el.innerText && el.innerText.includes('Connection');
-    if(lost){
-      if(!lostAt) lostAt = Date.now();
-      if(Date.now() - lostAt > RELOAD_AFTER_MS){ location.reload(); }
-    } else { lostAt = null; }
-  }
-  setInterval(checkConnection, CHECK_MS);
+  /* 1. 20초마다 ping — WebSocket 유휴 타임아웃 방지 */
+  setInterval(function(){
+    try { window.dispatchEvent(new MouseEvent('mousemove')); } catch(e){}
+  }, 20000);
+
+  /* 2. 5초마다 앱 상태 체크 — 잠들었거나 연결 끊기면 즉시 새로고침 */
+  setInterval(function(){
+    var txt = (document.body || {}).innerText || '';
+    var gone = txt.includes('gone to sleep') ||
+               txt.includes('잠들었') ||
+               txt.includes('Reconnecting') ||
+               txt.includes('Please wait');
+    if(gone){ setTimeout(function(){ location.reload(); }, 2000); return; }
+
+    /* iframe 내부 Streamlit 앱이 완전히 비어있으면 새로고침 */
+    var app = document.querySelector('[data-testid="stApp"]') ||
+              document.querySelector('.main');
+    if(app && app.innerHTML.trim().length < 50){
+      setTimeout(function(){ location.reload(); }, 3000);
+    }
+  }, 5000);
 })();
 </script>
 <style>

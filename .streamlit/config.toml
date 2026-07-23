@@ -1,10 +1,9 @@
 [server]
 maxUploadSize = 500
-# WebSocket 연결 타임아웃 늘리기 (초) — 기본값보다 길게 설정해 연결 끊김 방지
-headlessServerPort = 8501
 
 [browser]
 gatherUsageStats = false
+serverAddress = "localhost"
 
 [theme]
 base = "light"
