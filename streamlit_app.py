@@ -1298,6 +1298,7 @@ with st.expander("**STEP 7 — 복선 탐지 + 회수 확인** &nbsp;|&nbsp; Cla
 
     > **팁**: 분량이 많으면 프롬프트 TXT를 다운로드해서 claude.ai **파일 업로드**로 전송하세요.
     """)
+    st.warning("⚠️ **STEP 7은 장편소설(픽션)에만 유효합니다.** 비즈니스·에세이·논픽션 책은 복선/회수 구조가 없으므로 이 단계를 건너뛰세요. 해당 장르는 STEP 6(반복 표현) + STEP 8(출판 자료)만 사용하면 충분합니다.")
 
     _s7_single = _is_single_file(chapters)
     ch_nums_all = sorted(ch_sort(k) for k in chapters if 0 < ch_sort(k) <= 9999)
