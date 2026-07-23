@@ -508,24 +508,40 @@ def build_step6_prompt(chapters):
         lines.append(f"• '{p}' — {c}회\n  예시: {ctx_str}\n\n")
     return ''.join(lines), len(patterns)
 
+def _is_single_file(chapters):
+    """제X화 구분 없이 단일 파일로 올라온 경우 감지 (ch_sort 값이 모두 9999 초과)"""
+    return all(ch_sort(k) > 9999 for k in chapters)
+
+def _single_file_halves(chapters):
+    """단일 파일을 전반/후반 텍스트로 반반 분리"""
+    full = '\n\n'.join(v for _, v in sorted(chapters.items(), key=lambda x: ch_sort(x[0])))
+    mid = len(full) // 2
+    return full[:mid], full[mid:]
+
 def build_step7_phase1_prompt(chapters, start, end):
     """STEP 7 1단계 무료 프롬프트: 전반부 떡밥 탐지"""
-    selected = sorted(
-        [(ch_sort(k), v) for k, v in chapters.items() if start <= ch_sort(k) <= end],
-        key=lambda x: x[0]
-    )
-    if not selected:
-        return None
-    combined = '\n\n'.join(f"=== {n}화 ===\n{text}" for n, text in selected)
+    if _is_single_file(chapters):
+        first_half, _ = _single_file_halves(chapters)
+        combined = first_half
+        range_label = "전반부(전체 본문 앞 절반)"
+    else:
+        selected = sorted(
+            [(ch_sort(k), v) for k, v in chapters.items() if start <= ch_sort(k) <= end],
+            key=lambda x: x[0]
+        )
+        if not selected:
+            return None
+        combined = '\n\n'.join(f"=== {n}화 ===\n{text}" for n, text in selected)
+        range_label = f"{start}화~{end}화(전반부)"
     return (
         f"당신은 한국 장편소설 전문 편집자입니다. "
-        f"아래는 장편소설의 {start}화부터 {end}화까지(전반부) 전체 본문입니다.\n\n"
+        f"아래는 장편소설의 {range_label} 전체 본문입니다.\n\n"
         "이 구간에서 '나중에 회수될 것 같은 설정/암시/약속(떡밥)'을 찾아주세요.\n"
         "떡밥이란: 나중에 다시 다뤄질 것처럼 던져놓은 인물의 비밀, 의미심장한 물건이나 대사, "
         "풀리지 않은 의문, 예고된 사건, 복선이 되는 묘사 등입니다.\n\n"
         "각 떡밥마다 아래 형식으로 작성하세요:\n\n"
         "## 떡밥 N: (한 줄 요약)\n"
-        f"- **등장**: {start}~{end}화 중 N화\n"
+        f"- **등장**: {range_label}\n"
         "- **근거 문장**: \"원문 인용\"\n"
         "- **판단 근거**: (1줄)\n"
         "- **회수 예상**: (추측이면 '추측:'으로 시작)\n\n"
@@ -535,17 +551,23 @@ def build_step7_phase1_prompt(chapters, start, end):
 
 def build_step7_phase2_prompt(foreshadowing_text, chapters, start, end):
     """STEP 7 2단계 무료 프롬프트: 후반부 회수 확인"""
-    selected = sorted(
-        [(ch_sort(k), v) for k, v in chapters.items() if start <= ch_sort(k) <= end],
-        key=lambda x: x[0]
-    )
-    if not selected:
-        return None
-    combined = '\n\n'.join(f"=== {n}화 ===\n{text}" for n, text in selected)
+    if _is_single_file(chapters):
+        _, second_half = _single_file_halves(chapters)
+        combined = second_half
+        range_label = "후반부(전체 본문 뒤 절반)"
+    else:
+        selected = sorted(
+            [(ch_sort(k), v) for k, v in chapters.items() if start <= ch_sort(k) <= end],
+            key=lambda x: x[0]
+        )
+        if not selected:
+            return None
+        combined = '\n\n'.join(f"=== {n}화 ===\n{text}" for n, text in selected)
+        range_label = f"{start}화~{end}화(후반부)"
     return (
         "당신은 한국 장편소설 전문 편집자입니다.\n\n"
         "아래 [떡밥 목록]은 전반부 분석에서 찾아낸 복선/설정/암시 목록입니다.\n"
-        f"[후반부 본문]은 {start}화부터 {end}화까지 전체 본문입니다.\n\n"
+        f"[후반부 본문]은 {range_label} 전체 본문입니다.\n\n"
         "각 떡밥이 후반부에서 실제로 회수됐는지 확인하고 판정하세요.\n\n"
         "판정 기준:\n"
         "- '회수됨': 후반부에 명확히 연결되는 사건/대사가 있다.\n"
@@ -1277,17 +1299,22 @@ with st.expander("**STEP 7 — 복선 탐지 + 회수 확인** &nbsp;|&nbsp; Cla
     > **팁**: 분량이 많으면 프롬프트 TXT를 다운로드해서 claude.ai **파일 업로드**로 전송하세요.
     """)
 
-    ch_nums_all = sorted(ch_sort(k) for k in chapters if ch_sort(k) > 0)
+    _s7_single = _is_single_file(chapters)
+    ch_nums_all = sorted(ch_sort(k) for k in chapters if 0 < ch_sort(k) <= 9999)
     first_ch = ch_nums_all[0] if ch_nums_all else 1
     last_ch  = ch_nums_all[-1] if ch_nums_all else 36
-    mid_ch   = ch_nums_all[len(ch_nums_all)//2 - 1] if len(ch_nums_all) >= 2 else last_ch // 2
+    mid_ch   = ch_nums_all[len(ch_nums_all)//2 - 1] if len(ch_nums_all) >= 2 else (last_ch + first_ch) // 2
 
     st.markdown("### 1단계 — 전반부 떡밥 탐지")
-    c1, c2 = st.columns(2)
-    s7_s1 = c1.number_input("전반부 시작 화", min_value=1, value=first_ch, key="s7s1")
-    s7_e1 = c2.number_input("전반부 끝 화",   min_value=1, value=mid_ch,   key="s7e1")
-    sel1_chars = sum(len(v) for k, v in chapters.items() if s7_s1 <= ch_sort(k) <= s7_e1)
-    st.caption(f"선택 범위 약 {sel1_chars:,}자")
+    if _s7_single:
+        st.info("챕터 구분(제1화~)이 없는 파일입니다. 전체 본문을 자동으로 전반/후반으로 나눠 분석합니다.")
+        s7_s1, s7_e1 = 0, 0
+    else:
+        c1, c2 = st.columns(2)
+        s7_s1 = c1.number_input("전반부 시작 화", min_value=1, value=first_ch, key="s7s1")
+        s7_e1 = c2.number_input("전반부 끝 화",   min_value=1, value=mid_ch,   key="s7e1")
+        sel1_chars = sum(len(v) for k, v in chapters.items() if s7_s1 <= ch_sort(k) <= s7_e1)
+        st.caption(f"선택 범위 약 {sel1_chars:,}자")
 
     if st.button("1단계 프롬프트 생성", key="r7a", type="primary"):
         with st.spinner("프롬프트 생성 중..."):
@@ -1302,7 +1329,7 @@ with st.expander("**STEP 7 — 복선 탐지 + 회수 확인** &nbsp;|&nbsp; Cla
     if 's7_p1' in st.session_state:
         r1, r2 = st.session_state.s7_p1_range
         p1 = st.session_state.s7_p1
-        fn1 = f"step7_1단계_{proj_name}_{r1}-{r2}화.txt"
+        fn1 = f"step7_1단계_{proj_name}_{'전반부' if _s7_single else f'{r1}-{r2}화'}.txt"
         st.download_button(f"⬇ 1단계 프롬프트 TXT 다운로드 ({len(p1):,}자)",
                            p1.encode('utf-8'), fn1, "text/plain", key="dl7p1")
         save_local(report_dir, fn1, p1.encode('utf-8'))
@@ -1316,11 +1343,14 @@ with st.expander("**STEP 7 — 복선 탐지 + 회수 확인** &nbsp;|&nbsp; Cla
             height=180, key="s7_p1_paste",
             placeholder="claude.ai에서 받은 복선 목록을 여기에 붙여넣으세요..."
         )
-        c3, c4 = st.columns(2)
-        s7_s2 = c3.number_input("후반부 시작 화", min_value=1, value=mid_ch + 1, key="s7s2")
-        s7_e2 = c4.number_input("후반부 끝 화",   min_value=1, value=last_ch,    key="s7e2")
-        sel2_chars = sum(len(v) for k, v in chapters.items() if s7_s2 <= ch_sort(k) <= s7_e2)
-        st.caption(f"선택 범위 약 {sel2_chars:,}자")
+        if _s7_single:
+            s7_s2, s7_e2 = 0, 0
+        else:
+            c3, c4 = st.columns(2)
+            s7_s2 = c3.number_input("후반부 시작 화", min_value=1, value=mid_ch + 1, key="s7s2")
+            s7_e2 = c4.number_input("후반부 끝 화",   min_value=1, value=last_ch,    key="s7e2")
+            sel2_chars = sum(len(v) for k, v in chapters.items() if s7_s2 <= ch_sort(k) <= s7_e2)
+            st.caption(f"선택 범위 약 {sel2_chars:,}자")
 
         if st.button("2단계 프롬프트 생성", key="r7b", type="primary"):
             if not s7_phase1_paste.strip():
