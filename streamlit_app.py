@@ -23,6 +23,23 @@ st.set_page_config(
 )
 
 st.markdown("""
+<script>
+/* 화면 사라짐 방지: WebSocket 연결이 끊기면 30초 후 자동 새로고침 */
+(function(){
+  var lostAt = null;
+  var CHECK_MS = 3000;
+  var RELOAD_AFTER_MS = 30000;
+  function checkConnection(){
+    var el = document.querySelector('[data-testid="stStatusWidget"]');
+    var lost = el && el.innerText && el.innerText.includes('Connection');
+    if(lost){
+      if(!lostAt) lostAt = Date.now();
+      if(Date.now() - lostAt > RELOAD_AFTER_MS){ location.reload(); }
+    } else { lostAt = null; }
+  }
+  setInterval(checkConnection, CHECK_MS);
+})();
+</script>
 <style>
   /* 사이드바 — 흰 배경, 검정 글씨 */
   [data-testid="stSidebar"] { background:#FAFAF8 !important; }
@@ -785,6 +802,11 @@ with st.expander("**STEP 3 — 직급·계급·직책 체크** &nbsp;|&nbsp; 챕
                 st.markdown("**인물별 계급 타임라인**")
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
+        json_bytes = json.dumps(r, ensure_ascii=False, indent=2).encode('utf-8')
+        st.download_button("⬇ STEP3 계급체크 결과 JSON 저장", json_bytes,
+                           f"계급체크_{proj_name}.json", "application/json")
+        save_local(report_dir, f"계급체크_{proj_name}.json", json_bytes)
+
 
 # ════════════════════════════════════════════════════════════
 # STEP 4 — 페이싱 차트 (2000px 이상, A4 비율)
@@ -976,13 +998,15 @@ with st.expander("**STEP 6 — AI 반복 표현 진단** &nbsp;|&nbsp; Claude AI
 
 
 st.markdown("---")
-st.markdown("## STEP 7–10 &nbsp; 고급 AI 분석 (준비 중)")
+st.markdown("## STEP 7–9 &nbsp; 고급 AI 분석 (준비 중)")
 
 for num, name, desc in [
-    (7, "복선 탐지",     "전반부에서 회수되어야 할 설정·암시·약속을 AI가 찾아냅니다."),
-    (8, "복선 회수 확인","앞에서 찾은 복선이 후반부에서 실제로 회수됐는지 확인합니다."),
-    (9, "페이싱 AI 판단","이상 챕터만 골라 AI가 의도된 것인지 판단합니다."),
-    (10,"출판 자료",     "소개글·줄거리·인물 소개 등 출판사 제출용 자료를 생성합니다."),
+    (7, "복선 탐지 + 회수 확인",
+     "전반부 설정·암시·약속을 AI가 찾고, 후반부에서 실제로 회수됐는지까지 한 번에 확인합니다."),
+    (8, "페이싱 AI 판단",
+     "페이싱 이상 챕터만 골라 AI가 의도된 리듬인지 늘어짐인지 판단하고 수정 방향을 제안합니다."),
+    (9, "출판 자료",
+     "소개글·줄거리·챕터 제목·홍보문구 등 출판사 제출용 자료를 생성합니다."),
 ]:
     with st.expander(f"**STEP {num} — {name}** &nbsp;|&nbsp; 준비 중"):
         st.markdown(f"**{desc}**")
