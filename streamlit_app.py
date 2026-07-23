@@ -426,53 +426,47 @@ def run_step4_chart(chapters):
         return None, None
 
     n = len(rows)
-    labels = [r['label'] for r in rows]
-    x      = list(range(n))
+    x = list(range(n))
 
-    # A4 가로 비율, 최소 2000px → figsize in inches at 100dpi
-    # 가로 최소 20인치(=2000px@100dpi), 챕터 많을수록 더 넓게
     fig_w = max(20, n * 0.55)
-    fig_h = fig_w * 0.55   # A4 가로 황금 비율
+    fig_h = fig_w * 0.38   # 단일 차트이므로 높이 줄임
 
-    fig, axes = plt.subplots(3, 1, figsize=(fig_w, fig_h), sharex=True, dpi=100)
+    fig, ax = plt.subplots(1, 1, figsize=(fig_w, fig_h), dpi=100)
     fig.patch.set_facecolor('#FAFAF8')
 
-    specs = [
-        (axes[0], [r['chars']     for r in rows], '#1A1A1A', '글자수 (공백 제외)', '글자수'),
-        (axes[1], [r['sent_mean'] for r in rows], '#C41E1E', '문장 평균 길이',      '평균 길이(자)'),
-        (axes[2], [r['dia']       for r in rows], '#2A6A3A', '대화 비중 (%)',        '대화 비중(%)'),
-    ]
+    vals = [r['chars'] for r in rows]
+    avg  = statistics.mean(vals)
 
-    for ax, vals, color, title, ylabel in specs:
-        ax.set_facecolor('#FFFFFF')
-        ax.plot(x, vals, marker='o', color=color, linewidth=2, markersize=6)
-        avg = statistics.mean(vals)
-        ax.axhline(avg, color='#AAAAAA', linestyle='--', linewidth=1)
+    ax.set_facecolor('#FFFFFF')
+    ax.fill_between(x, vals, alpha=0.08, color='#1A1A1A')
+    ax.plot(x, vals, marker='o', color='#1A1A1A', linewidth=2.5, markersize=7)
+    ax.axhline(avg, color='#AAAAAA', linestyle='--', linewidth=1.2,
+               label=f'평균 {avg:,.0f}자')
 
-        # 꼭지점 라벨 — 챕터 수에 따라 폰트 크기 조절
-        fs = max(6, min(9, int(140 / n)))
-        for i, (v, r) in enumerate(zip(vals, rows)):
-            if ylabel == '글자수':
-                lbl = f"{r['label']}-{v:,}자"
-            elif ylabel == '대화 비중(%)':
-                lbl = f"{r['label']}-{v:.0f}%"
-            else:
-                lbl = f"{r['label']}-{v:.0f}자"
-            ax.annotate(lbl, (i, v), textcoords='offset points', xytext=(0,8),
-                        ha='center', fontsize=fs, color='#333')
+    # Y축 그리드 (세로 눈금선)
+    ax.yaxis.grid(True, linestyle=':', linewidth=0.8, color='#DDDDDD')
+    ax.set_axisbelow(True)
 
-        ax.set_title(title, fontsize=13, fontweight='bold', color='#111', pad=8)
-        ax.set_ylabel(ylabel, fontsize=10)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.tick_params(labelsize=9)
+    # 꼭지점 라벨: "챕터번호-글자수" 예) 1화-4,500자
+    fs = max(6, min(9, int(140 / n)))
+    for i, (v, r) in enumerate(zip(vals, rows)):
+        lbl = f"{r['label']}-{v:,}자"
+        ax.annotate(lbl, (i, v), textcoords='offset points', xytext=(0, 9),
+                    ha='center', fontsize=fs, color='#222',
+                    fontweight='bold' if v == max(vals) or v == min(vals) else 'normal')
 
-    axes[-1].set_xticks(x)
-    axes[-1].set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
-    axes[-1].set_xlabel('챕터', fontsize=10)
+    ax.set_title('챕터별 글자수 (공백 제외)', fontsize=14, fontweight='bold', color='#111', pad=10)
+    ax.set_ylabel('글자수', fontsize=11)
+    ax.set_xlabel('챕터', fontsize=11)
+    ax.set_xticks(x)
+    ax.set_xticklabels([r['label'] for r in rows], rotation=45, ha='right', fontsize=9)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.legend(fontsize=9, loc='upper right')
+    ax.tick_params(labelsize=9)
+
     fig.tight_layout(pad=2.5)
 
-    # PNG bytes
     buf = io.BytesIO()
     fig.savefig(buf, format='png', dpi=100, facecolor='#FAFAF8', bbox_inches='tight')
     plt.close(fig)
