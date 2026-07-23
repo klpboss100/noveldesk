@@ -472,6 +472,120 @@ def run_step6_ai_suggest(chapters, api_key, model='claude-haiku-4-5-20251001'):
     return results
 
 
+_SONNET = "claude-sonnet-4-6"
+_PRICE_IN, _PRICE_OUT = 3.0, 15.0   # $ per MTok
+
+def _est_cost(chars, out_tok=4000):
+    in_tok = int(chars / 1.7)
+    return in_tok/1e6*_PRICE_IN + out_tok/1e6*_PRICE_OUT, in_tok
+
+def run_step7_detect(chapters, api_key, start, end):
+    """전반부 떡밥 탐지"""
+    import anthropic as ant
+    selected = sorted(
+        [(ch_sort(k), v) for k, v in chapters.items() if start <= ch_sort(k) <= end],
+        key=lambda x: x[0]
+    )
+    if not selected:
+        raise ValueError(f"{start}~{end}화 범위에 챕터가 없습니다.")
+    combined = '\n\n'.join(f"=== {n}화 ===\n{text}" for n, text in selected)
+    prompt = (
+        f"당신은 한국 장편소설 전문 편집자입니다. "
+        f"아래는 장편소설의 {start}화부터 {end}화까지(전반부) 전체 본문입니다.\n\n"
+        "이 구간에서 '나중에 회수될 것 같은 설정/암시/약속(떡밥)'을 찾아주세요.\n"
+        "떡밥이란: 나중에 다시 다뤄질 것처럼 던져놓은 인물의 비밀, 의미심장한 물건이나 대사, "
+        "풀리지 않은 의문, 예고된 사건, 복선이 되는 묘사 등을 말합니다.\n\n"
+        "각 떡밥마다 아래 형식으로 작성하세요:\n\n"
+        "## 떡밥 N: (한 줄 요약)\n"
+        f"- **등장**: {start}~{end}화 중 N화\n"
+        "- **근거 문장**: \"원문 인용\"\n"
+        "- **판단 근거**: (1줄)\n"
+        "- **회수 예상**: (1줄, 추측이면 '추측:'으로 시작)\n\n"
+        "중요: 실제 본문 문장만 인용하고, 사소하거나 일반적인 묘사는 제외하세요. "
+        "떡밥은 중요도 순으로 정렬하세요.\n\n"
+        f"[본문]\n{combined}"
+    )
+    client = ant.Anthropic(api_key=api_key)
+    resp = client.messages.create(
+        model=_SONNET, max_tokens=4000,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return resp.content[0].text, resp.usage
+
+def run_step7_resolve(chapters, api_key, foreshadowing_md, start, end):
+    """후반부 떡밥 회수 확인"""
+    import anthropic as ant
+    selected = sorted(
+        [(ch_sort(k), v) for k, v in chapters.items() if start <= ch_sort(k) <= end],
+        key=lambda x: x[0]
+    )
+    if not selected:
+        raise ValueError(f"{start}~{end}화 범위에 챕터가 없습니다.")
+    combined = '\n\n'.join(f"=== {n}화 ===\n{text}" for n, text in selected)
+    prompt = (
+        "당신은 한국 장편소설 전문 편집자입니다.\n\n"
+        "아래 [떡밥 목록]은 전반부를 분석해서 찾아낸 '나중에 회수될 설정/암시/약속' 목록입니다.\n"
+        f"[후반부 본문]은 {start}화부터 {end}화까지 전체 본문입니다.\n\n"
+        "[떡밥 목록]의 각 항목이 [후반부 본문]에서 실제로 회수됐는지 확인하세요.\n\n"
+        "판정 기준:\n"
+        "- '회수됨': 후반부에 명확히 연결되는 사건/대사/설명이 있다.\n"
+        "- '부분 회수': 관련 내용이 나오지만 완전히 해소되지 않았다.\n"
+        "- '회수 안 됨': 후반부 전체에서 연결되는 내용이 없다.\n\n"
+        "반드시 아래 두 섹션 형식으로 답하세요.\n\n"
+        "## 미회수 떡밥 (우선 확인)\n"
+        "('회수 안 됨' 항목만. 없으면 '회수 안 된 떡밥 없음'이라고 쓰세요)\n\n"
+        "### 떡밥: (한 줄 요약)\n"
+        "- **원래 등장**: (전반부 화수)\n"
+        "- **판정**: 회수 안 됨\n"
+        "- **검토 의견**: (이유)\n\n"
+        "## 전체 판정 (참고)\n"
+        "(모든 항목을 빠짐없이 나열)\n\n"
+        "### 떡밥: (한 줄 요약)\n"
+        "- **원래 등장**: (화수)\n"
+        "- **판정**: 회수됨 / 부분 회수 / 회수 안 됨\n"
+        "- **회수 위치**: (몇 화 또는 '해당 없음')\n"
+        "- **근거 문장**: (원문 인용 또는 생략)\n\n"
+        f"[떡밥 목록]\n{foreshadowing_md}\n\n"
+        f"[후반부 본문]\n{combined}"
+    )
+    client = ant.Anthropic(api_key=api_key)
+    resp = client.messages.create(
+        model=_SONNET, max_tokens=4000,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return resp.content[0].text, resp.usage
+
+def run_step8_publish(chapters, api_key, title):
+    """출판사 제출용 자료 생성"""
+    import anthropic as ant
+    sorted_chs = sorted(chapters.items(), key=lambda x: ch_sort(x[0]))
+    sample = sorted_chs[:3] + sorted_chs[-2:]
+    sample_text = '\n\n'.join(f"=== {k} ===\n{v[:2000]}" for k, v in sample)
+    total_chs   = len(chapters)
+    total_chars = sum(len(re.sub(r'\s', '', v)) for v in chapters.values())
+    prompt = (
+        f"당신은 한국 출판사 편집자입니다. "
+        f"아래는 장편소설 『{title}』의 챕터 샘플입니다. "
+        f"전체 {total_chs}화, 약 {total_chars:,}자 분량입니다.\n\n"
+        "아래 형식으로 출판사 제출용 자료를 작성해 주세요:\n\n"
+        "## 책 소개글 (400자 이내)\n"
+        "(독자의 흥미를 끌 수 있는, 책의 매력을 압축한 소개문)\n\n"
+        "## 줄거리 (600자 이내)\n"
+        "(전체 이야기 흐름. 결말은 '...으로 이어진다'처럼 열어두세요)\n\n"
+        "## 주요 인물 소개\n"
+        "(각 인물: 이름, 나이/직업, 성격·역할 2~3줄)\n\n"
+        "## 출판사 홍보문구 3가지 (각 30자 이내)\n"
+        "(책 표지·광고에 쓸 짧고 임팩트 있는 문구)\n\n"
+        f"[샘플 챕터]\n{sample_text}"
+    )
+    client = ant.Anthropic(api_key=api_key)
+    resp = client.messages.create(
+        model=_SONNET, max_tokens=3000,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return resp.content[0].text, resp.usage
+
+
 # ════════════════════════════════════════════════════════════
 # 사이드바
 # ════════════════════════════════════════════════════════════
@@ -998,20 +1112,146 @@ with st.expander("**STEP 6 — AI 반복 표현 진단** &nbsp;|&nbsp; Claude AI
 
 
 st.markdown("---")
-st.markdown("## STEP 7–9 &nbsp; 고급 AI 분석 (준비 중)")
+st.markdown("## STEP 7–8 &nbsp; 고급 AI 분석")
 
-for num, name, desc in [
-    (7, "복선 탐지 + 회수 확인",
-     "전반부 설정·암시·약속을 AI가 찾고, 후반부에서 실제로 회수됐는지까지 한 번에 확인합니다."),
-    (8, "페이싱 AI 판단",
-     "페이싱 이상 챕터만 골라 AI가 의도된 리듬인지 늘어짐인지 판단하고 수정 방향을 제안합니다."),
-    (9, "출판 자료",
-     "소개글·줄거리·챕터 제목·홍보문구 등 출판사 제출용 자료를 생성합니다."),
-]:
-    with st.expander(f"**STEP {num} — {name}** &nbsp;|&nbsp; 준비 중"):
-        st.markdown(f"**{desc}**")
-        st.caption("곧 추가됩니다.")
-        st.button(f"STEP {num} 실행", key=f"r{num}", disabled=True)
+
+# ════════════════════════════════════════════════════════════
+# STEP 7 — 복선 탐지 + 회수 확인
+# ════════════════════════════════════════════════════════════
+
+with st.expander("**STEP 7 — 복선 탐지 + 회수 확인** &nbsp;|&nbsp; 두 단계 진행 (API 필요, 유료)"):
+    st.markdown("""
+    전반부에서 떡밥(복선)을 AI가 찾고, 후반부에서 실제로 회수됐는지 대조합니다.
+
+    - **1단계**: 전반부 화수 범위 지정 → AI가 복선·암시·설정 목록 추출
+    - **2단계**: 후반부 화수 범위 지정 → AI가 각 복선의 회수 여부 판정
+
+    > 모델: `claude-sonnet-4-6` | 비용: 챕터 분량에 따라 $0.1~$0.5 내외
+    """)
+
+    if not st.session_state.get('api_key'):
+        st.markdown('<div class="warn">사이드바에 Claude API 키를 입력해야 실행할 수 있습니다.</div>',
+                    unsafe_allow_html=True)
+    else:
+        # ── 1단계: 전반부 탐지 ──
+        st.markdown("### 1단계 — 전반부 떡밥 탐지")
+        ch_nums_all = sorted(ch_sort(k) for k in chapters if ch_sort(k) > 0)
+        first_ch = ch_nums_all[0] if ch_nums_all else 1
+        last_ch  = ch_nums_all[-1] if ch_nums_all else 36
+        mid_ch   = ch_nums_all[len(ch_nums_all)//2 - 1] if len(ch_nums_all) >= 2 else last_ch // 2
+
+        c1, c2 = st.columns(2)
+        s7_s1 = c1.number_input("전반부 시작 화", min_value=1, value=first_ch, key="s7s1")
+        s7_e1 = c2.number_input("전반부 끝 화",   min_value=1, value=mid_ch,   key="s7e1")
+
+        sel1_chars = sum(len(v) for k, v in chapters.items()
+                         if s7_s1 <= ch_sort(k) <= s7_e1)
+        est_cost1, est_tok1 = _est_cost(sel1_chars + 800)
+        st.caption(f"선택 범위 약 {sel1_chars:,}자 → 예상 입력 토큰 약 {est_tok1:,} | "
+                   f"예상 비용 약 ${est_cost1:.3f}")
+
+        if st.button("1단계 실행 — 전반부 떡밥 탐지", key="r7a", type="primary"):
+            with st.spinner(f"{s7_s1}~{s7_e1}화 분석 중... (시간이 걸릴 수 있습니다)"):
+                try:
+                    result7a, usage7a = run_step7_detect(
+                        chapters, st.session_state.api_key, s7_s1, s7_e1)
+                    st.session_state.s7_detect = result7a
+                    st.session_state.s7_detect_range = (s7_s1, s7_e1)
+                    cost7a = usage7a.input_tokens/1e6*_PRICE_IN + usage7a.output_tokens/1e6*_PRICE_OUT
+                    st.success(f"완료 — 실제 비용 약 ${cost7a:.4f}")
+                    save_local(report_dir, f"복선탐지_{proj_name}_{s7_s1}-{s7_e1}화.md",
+                               result7a.encode('utf-8'))
+                except Exception as e:
+                    st.error(f"오류: {e}")
+
+        if 's7_detect' in st.session_state:
+            r1, r2 = st.session_state.s7_detect_range
+            st.markdown(st.session_state.s7_detect)
+            st.download_button("⬇ 1단계 결과 MD 저장",
+                               st.session_state.s7_detect.encode('utf-8'),
+                               f"복선탐지_{proj_name}_{r1}-{r2}화.md",
+                               "text/markdown", key="dl7a")
+
+            st.markdown("---")
+            st.markdown("### 2단계 — 후반부 회수 확인")
+            c3, c4 = st.columns(2)
+            s7_s2 = c3.number_input("후반부 시작 화", min_value=1, value=mid_ch+1, key="s7s2")
+            s7_e2 = c4.number_input("후반부 끝 화",   min_value=1, value=last_ch,  key="s7e2")
+
+            sel2_chars = sum(len(v) for k, v in chapters.items()
+                             if s7_s2 <= ch_sort(k) <= s7_e2)
+            fore_chars = len(st.session_state.s7_detect)
+            est_cost2, est_tok2 = _est_cost(sel2_chars + fore_chars + 800)
+            st.caption(f"선택 범위 약 {sel2_chars:,}자 + 떡밥 목록 {fore_chars:,}자 → "
+                       f"예상 입력 토큰 약 {est_tok2:,} | 예상 비용 약 ${est_cost2:.3f}")
+
+            if st.button("2단계 실행 — 후반부 회수 확인", key="r7b", type="primary"):
+                with st.spinner(f"{s7_s2}~{s7_e2}화 대조 중... (시간이 걸릴 수 있습니다)"):
+                    try:
+                        result7b, usage7b = run_step7_resolve(
+                            chapters, st.session_state.api_key,
+                            st.session_state.s7_detect, s7_s2, s7_e2)
+                        st.session_state.s7_resolve = result7b
+                        st.session_state.s7_resolve_range = (s7_s2, s7_e2)
+                        cost7b = usage7b.input_tokens/1e6*_PRICE_IN + usage7b.output_tokens/1e6*_PRICE_OUT
+                        st.success(f"완료 — 실제 비용 약 ${cost7b:.4f}")
+                        save_local(report_dir, f"복선회수확인_{proj_name}_{s7_s2}-{s7_e2}화.md",
+                                   result7b.encode('utf-8'))
+                    except Exception as e:
+                        st.error(f"오류: {e}")
+
+            if 's7_resolve' in st.session_state:
+                r3, r4 = st.session_state.s7_resolve_range
+                st.markdown(st.session_state.s7_resolve)
+                st.download_button("⬇ 2단계 결과 MD 저장",
+                                   st.session_state.s7_resolve.encode('utf-8'),
+                                   f"복선회수확인_{proj_name}_{r3}-{r4}화.md",
+                                   "text/markdown", key="dl7b")
+                if IS_LOCAL and report_dir:
+                    st.caption(f"💾 자동 저장됨: `{report_dir}`")
+
+
+# ════════════════════════════════════════════════════════════
+# STEP 8 — 출판 자료 생성
+# ════════════════════════════════════════════════════════════
+
+with st.expander("**STEP 8 — 출판 자료 생성** &nbsp;|&nbsp; 소개글·줄거리·인물소개·홍보문구 (API 필요, 유료)"):
+    st.markdown("""
+    소설 앞뒤 챕터 샘플을 AI에게 보내서 출판사 제출용 자료를 자동으로 작성합니다.
+
+    - 책 소개글 (400자 이내)
+    - 줄거리 (600자 이내)
+    - 주요 인물 소개
+    - 홍보문구 3가지 (각 30자 이내)
+
+    > 모델: `claude-sonnet-4-6` | 비용: 약 $0.02~$0.05 (샘플 챕터만 전송)
+    """)
+
+    if not st.session_state.get('api_key'):
+        st.markdown('<div class="warn">사이드바에 Claude API 키를 입력해야 실행할 수 있습니다.</div>',
+                    unsafe_allow_html=True)
+    else:
+        pub_title = st.text_input("소설 제목 (출판 자료에 표시)", value=proj_name, key="pub_title")
+
+        if st.button("STEP 8 실행 — 출판 자료 생성", key="r8", type="primary"):
+            with st.spinner("AI가 출판 자료를 작성 중..."):
+                try:
+                    result8, usage8 = run_step8_publish(
+                        chapters, st.session_state.api_key, pub_title)
+                    st.session_state.s8 = result8
+                    cost8 = usage8.input_tokens/1e6*_PRICE_IN + usage8.output_tokens/1e6*_PRICE_OUT
+                    st.success(f"완료 — 실제 비용 약 ${cost8:.4f}")
+                    save_local(report_dir, f"출판자료_{proj_name}.md", result8.encode('utf-8'))
+                except Exception as e:
+                    st.error(f"오류: {e}")
+
+        if 's8' in st.session_state:
+            st.markdown(st.session_state.s8)
+            st.download_button("⬇ 출판 자료 MD 저장",
+                               st.session_state.s8.encode('utf-8'),
+                               f"출판자료_{proj_name}.md", "text/markdown", key="dl8")
+            if IS_LOCAL and report_dir:
+                st.caption(f"💾 자동 저장됨: `{report_dir / f'출판자료_{proj_name}.md'}`")
 
 st.markdown("---")
 st.markdown('<div style="text-align:center;font-size:.72rem;color:#BBB;padding:16px">'
